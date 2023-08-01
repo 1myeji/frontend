@@ -1,9 +1,12 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { getJobPostsList, getJobPostsSearch } from '@/api/applicantApi';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { throttle } from 'lodash';
 
 export const useJobSearchInfinite = (type: string, keyword: string | null) => {
+  const queryClient = useQueryClient();
+  const previousKeywordRef = useRef(keyword);
+
   const fetchJobPosts = async ({ pageParam = 0 }) => {
     if (type !== '전체' && keyword) {
       return getJobPostsSearch(type, keyword, pageParam);
@@ -24,6 +27,15 @@ export const useJobSearchInfinite = (type: string, keyword: string | null) => {
       },
     },
   );
+
+  useEffect(() => {
+    if (previousKeywordRef.current !== keyword) {
+      queryClient.cancelQueries(['jobPostsList', type, previousKeywordRef.current]);
+      queryClient.removeQueries(['jobPostsList', type, previousKeywordRef.current]);
+      window.scrollTo(0, 0);
+      previousKeywordRef.current = keyword;
+    }
+  }, [keyword]);
 
   useEffect(() => {
     const handleScroll = throttle(async () => {
